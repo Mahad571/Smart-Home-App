@@ -1,0 +1,264 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(SmartHomeApp());
+}
+
+class SmartHomeApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primaryColor: Colors.blueAccent,
+        scaffoldBackgroundColor: Colors.grey[200],
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.blueAccent,
+          elevation: 4,
+          titleTextStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ),
+      home: DashboardScreen(),
+    );
+  }
+}
+
+class Device {
+  String name;
+  String type;
+  String room;
+  bool isOn;
+  double value; // brightness or speed
+
+  Device({
+    required this.name,
+    required this.type,
+    required this.room,
+    this.isOn = false,
+    this.value = 50,
+  });
+}
+
+class DashboardScreen extends StatefulWidget {
+  @override
+  _DashboardScreenState createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  List<Device> devices = [
+    Device(name: "Living Room Light", type: "Light", room: "Living Room"),
+    Device(name: "Bedroom Fan", type: "Fan", room: "Bedroom"),
+    Device(name: "Main AC", type: "AC", room: "Hall"),
+    Device(name: "Security Camera", type: "Camera", room: "Gate"),
+  ];
+
+  IconData getDeviceIcon(String type) {
+    switch (type) {
+      case "Light":
+        return Icons.lightbulb;
+      case "Fan":
+        return Icons.toys;
+      case "AC":
+        return Icons.ac_unit;
+      case "Camera":
+        return Icons.videocam;
+      default:
+        return Icons.devices;
+    }
+  }
+
+  // ---------------- FAB Add Device ----------------
+  void _showAddDeviceDialog() {
+    final TextEditingController nameCtrl = TextEditingController();
+    final TextEditingController roomCtrl = TextEditingController();
+    String selectedType = "Light";
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Add New Device"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: InputDecoration(labelText: "Device Name"),
+              ),
+              TextField(
+                controller: roomCtrl,
+                decoration: InputDecoration(labelText: "Room Name"),
+              ),
+              DropdownButton<String>(
+                value: selectedType,
+                items: ["Light", "Fan", "AC", "Camera"]
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+                onChanged: (v) {
+                  setState(() => selectedType = v!);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: Text("Cancel"),
+              onPressed: () => Navigator.pop(context),
+            ),
+            ElevatedButton(
+              child: Text("Add"),
+              onPressed: () {
+                setState(() {
+                  devices.add(Device(
+                    name: nameCtrl.text,
+                    type: selectedType,
+                    room: roomCtrl.text,
+                  ));
+                });
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ---------------- MAIN UI ----------------
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Smart Home Dashboard"),
+        leading: Icon(Icons.menu),
+        actions: [
+          Padding(
+            padding: EdgeInsets.only(right: 12),
+            child: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person, color: Colors.blueAccent),
+            ),
+          )
+        ],
+      ),
+
+      // GRID VIEW ----------------
+      body: GridView.builder(
+        padding: EdgeInsets.all(12),
+        gridDelegate:
+            SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2),
+        itemCount: devices.length,
+        itemBuilder: (context, index) {
+          final device = devices[index];
+
+          return GestureDetector(
+            onTapDown: (_) => setState(() => _scaleIndex = index),
+            onTapUp: (_) => setState(() => _scaleIndex = -1),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DeviceDetailScreen(device: device),
+                ),
+              );
+            },
+            child: AnimatedScale(
+              scale: _scaleIndex == index ? 0.95 : 1.0,
+              duration: Duration(milliseconds: 150),
+              child: Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15)),
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(getDeviceIcon(device.type),
+                          size: 40,
+                          color: device.isOn ? Colors.green : Colors.grey),
+                      SizedBox(height: 8),
+                      Text(device.name,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15)),
+                      Switch(
+                        value: device.isOn,
+                        onChanged: (val) {
+                          setState(() => device.isOn = val);
+                        },
+                      ),
+                      Text(device.isOn ? "Status: ON" : "Status: OFF"),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.add),
+        onPressed: _showAddDeviceDialog,
+      ),
+    );
+  }
+
+  int _scaleIndex = -1;
+}
+
+class DeviceDetailScreen extends StatefulWidget {
+  final Device device;
+  DeviceDetailScreen({required this.device});
+
+  @override
+  _DeviceDetailScreenState createState() => _DeviceDetailScreenState();
+}
+
+class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.device.name),
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Icon(
+              Icons.devices_other,
+              size: 120,
+              color: widget.device.isOn ? Colors.green : Colors.grey,
+            ),
+            SizedBox(height: 20),
+
+            Text(
+              widget.device.isOn ? "Device is ON" : "Device is OFF",
+              style: TextStyle(fontSize: 20),
+            ),
+
+            Switch(
+              value: widget.device.isOn,
+              onChanged: (val) {
+                setState(() => widget.device.isOn = val);
+              },
+            ),
+
+            SizedBox(height: 20),
+            Text("Control: ${widget.device.value.toInt()}"),
+            Slider(
+              value: widget.device.value,
+              min: 0,
+              max: 100,
+              onChanged: (v) {
+                setState(() => widget.device.value = v);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
